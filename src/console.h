@@ -27,4 +27,9 @@ int OpenConsole();
 // and blocks until the player starts a game (returning true with the chosen
 // level) or quits (returning false).
 bool ChooseSkillLevel(Uint &letter, Uint &number);
+
+// SDL build: the values shown in the graphical status bar, published by the
+// game thread whenever the status line is updated.
+struct HudValues { Uint snipes, portals, portalsAtStart, score, lives, letter, number; WORD frame; };
+void PublishHud(const HudValues &v);
 void CloseConsole();

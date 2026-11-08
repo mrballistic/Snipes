@@ -279,6 +279,24 @@ static MazeTile maze[MAZE_WIDTH * MAZE_HEIGHT];
 
 static const char statusLine[] = "\xDA\xBF\xB3\x01\x1A\xB3\x02\xB3""Skill""\xC0\xD9\xB3\x01\x1A\xB3\x02\xB3""Time  Men Left                 Score     0  0000001 Man Left""e";
 
+#ifndef _CONSOLE
+// The SDL build draws its own status bar from these values instead of the
+// text rows written below.
+static void PublishHudValues()
+{
+	HudValues v;
+	v.snipes         = numLargeSnipes + numSmallSnipes;
+	v.portals        = numSnipePortals;
+	v.portalsAtStart = numSnipePortalsAtStart;
+	v.score          = score > 0 ? (Uint)score * 10 : 0; // the status line shows the score with a trailing 0
+	v.lives          = numPlayerDeaths < numLives ? numLives - numPlayerDeaths : 0;
+	v.letter         = skillLevelLetter;
+	v.number         = skillLevelNumber;
+	v.frame          = frame;
+	PublishHud(v);
+}
+#endif
+
 void InitializeHUD()
 {
 	char (&scratchBuffer)[WINDOW_WIDTH] = (char(&)[WINDOW_WIDTH])maze;
@@ -326,6 +344,9 @@ void InitializeHUD()
 	lastHUD_numLargeSnipesDestroyed = 0xFFFF;
 	lastHUD_numPlayerDeaths = 0xFF;
 	lastHUD_score = -1;
+#ifndef _CONSOLE
+	PublishHudValues();
+#endif
 }
 
 #define MAZE_SCRATCH_BUFFER_SIZE (MAZE_WIDTH_IN_CELLS * MAZE_HEIGHT_IN_CELLS)
@@ -875,6 +896,9 @@ bool UpdateHUD(bool incrementFrame = true) // returns true if the match has been
 		}
 	}
 	outputNumber(0x17, 0, 5, 1, 34, frame); // Time
+#ifndef _CONSOLE
+	PublishHudValues();
+#endif
 
 	if (numLargeSnipes || numSnipePortals || numSmallSnipes)
 		return false;

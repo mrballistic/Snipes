@@ -12,6 +12,7 @@
 #include "sdl.h"
 #include "uifont.h"
 #include "startscreen.h"
+#include "hud.h"
 #if defined(__APPLE__)
 #include <unistd.h>
 #endif
@@ -278,7 +279,7 @@ static void FixUpLineJoiningGlitch(SDL_Surface *s, Uint8 *HorzLineEdge, bool use
 			int y = y0 + d;
 			if (y >= s->h)
 				continue;
-			int alphaDiff = *alpha - SingleHorzLineEdge[y];
+			int alphaDiff = *alpha - HorzLineEdge[y]; // compare against the matching (single or double) line style
 			diff[d] += (Uint)(alphaDiff * alphaDiff);
 		}
 		diff[1] = diff[1] * (s->h-1) / s->h; // compensate for there having been 1 extra sampling
@@ -411,6 +412,22 @@ static SDL_Texture*& GetGlyph(SDL_Renderer *ren, TTF_Font* font, BYTE chr)
 	return t;
 }
 
+// The graphical status bar takes the place of the top VIEWPORT_ROW text rows,
+// and is only 1.5 rows tall, so the playfield keeps its size and the window
+// gets shorter. These give the pixel layout from the current tile size.
+#define WINDOW_HEIGHT_IN_ROWS (WINDOW_HEIGHT - VIEWPORT_ROW + 1.5)
+static int HudHeight() { return (TileHeight * 3 + 1) / 2; }
+static int RowTop(Uint row) { return HudHeight() + ((int)row - VIEWPORT_ROW) * TileHeight; }
+static int WindowContentHeight() { return RowTop(WINDOW_HEIGHT); }
+
+static HudValues Hud; // guarded by ScreenMutex
+void PublishHud(const HudValues &v)
+{
+	SDL_LockMutex(ScreenMutex);
+	Hud = v;
+	SDL_UnlockMutex(ScreenMutex);
+}
+
 static void RenderCharacterAt(SDL_Renderer *ren, TTF_Font* font, Uint x, Uint y)
 {
 	MazeTile tile = Screen[y][x];
@@ -419,7 +436,7 @@ static void RenderCharacterAt(SDL_Renderer *ren, TTF_Font* font, Uint x, Uint y)
 	SDL_Color fg = ScreenColors[fgScreen];
 	SDL_Color bg = ScreenColors[bgScreen];
 	SDL_Color black = {0, 0, 0, 0xFF};
-	SDL_Rect rect = { (int)x * TileWidth, (int)y * TileHeight, TileWidth, TileHeight };
+	SDL_Rect rect = { (int)x * TileWidth, RowTop(y), TileWidth, TileHeight };
 	SDL_SetRenderDrawColor(ren, bg.r, bg.g, bg.b, 0xFF);
 	if (bgScreen != 0)
 		SDL_RenderFillRect(ren, &rect);
@@ -431,7 +448,7 @@ static void RenderCharacterAt(SDL_Renderer *ren, TTF_Font* font, Uint x, Uint y)
 	int w, h;
 	SDL_QueryTexture(t, NULL, NULL, &w, &h);
 	SDL_Rect src = { 0, 0, w, h };
-	SDL_Rect dst = { (int)x * TileWidth + (TileWidth - w) / 2, (int)y * TileHeight + (TileHeight - h) / 2, w, h };
+	SDL_Rect dst = { (int)x * TileWidth + (TileWidth - w) / 2, RowTop(y) + (TileHeight - h) / 2, w, h };
 	if (h > (int)TileHeight) // not sure if this will always happen, so make the fix conditional
 	{
 		src.y += TileHeight % 19 * 8 / 19 % 2;
@@ -626,7 +643,7 @@ static int SDLCALL ConsoleThreadFunc(void*)
 	}
 	{
 #ifdef TILE_HEIGHT
-		if (TILE_HEIGHT * WINDOW_HEIGHT > usableRect.h)
+		if (TILE_HEIGHT * WINDOW_HEIGHT_IN_ROWS > usableRect.h)
 		{
 			fprintf(stderr, "Error: Configured tile height (%d) exceeds usable height (%d)\n", TILE_HEIGHT, usableRect.h);
 			SDL_Quit();
@@ -634,7 +651,7 @@ static int SDLCALL ConsoleThreadFunc(void*)
 		}
 		TileHeight = TILE_HEIGHT;
 #else
-		TileHeight = (int)(usableRect.h * WINDOW_SCREEN_FRACTION) / WINDOW_HEIGHT;
+		TileHeight = (int)(usableRect.h * WINDOW_SCREEN_FRACTION / WINDOW_HEIGHT_IN_ROWS);
 #endif
 
 #ifndef TILE_WIDTH
@@ -652,20 +669,20 @@ static int SDLCALL ConsoleThreadFunc(void*)
 	int top, left, bottom, right, totalWidth, totalHeight;
 	for (Uint i=0; i<2; i++)
 	{
-		win = SDL_CreateWindow("Snipes", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WINDOW_WIDTH * TileWidth, WINDOW_HEIGHT * TileHeight, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+		win = SDL_CreateWindow("Snipes", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WINDOW_WIDTH * TileWidth, WindowContentHeight(), SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
 		if (!win)
 		{
 			fprintf(stderr, "SDL_CreateWindow: %s\n", SDL_GetError());
 			return 1;
 		}
 		SDL_GetWindowBordersSize(win, &top, &left, &bottom, &right);
-		totalHeight = WINDOW_HEIGHT * TileHeight + (top + bottom);
+		totalHeight = WindowContentHeight() + (top + bottom);
 #ifdef TILE_HEIGHT
 		break;
 #else
 		if (i || totalHeight <= usableRect.h + ALLOWABLE_BORDER_EXCESS)
 			break;
-		TileHeight = (usableRect.h - (top + bottom)) / WINDOW_HEIGHT;
+		TileHeight = (int)((usableRect.h - (top + bottom)) / WINDOW_HEIGHT_IN_ROWS);
 		TileWidth = ((TileHeight*3+2)/4);
 		SDL_DestroyWindow(win);
 #endif
@@ -699,6 +716,7 @@ static int SDLCALL ConsoleThreadFunc(void*)
 			TileWidth  = (int)(TileWidth  * PixelScale + 0.5);
 			TileHeight = (int)(TileHeight * PixelScale + 0.5);
 			FontSize   = (int)(FontSize   * PixelScale + 0.5);
+			SDL_SetWindowSize(win, ToPoints(WINDOW_WIDTH * TileWidth), ToPoints(WindowContentHeight())); // absorb rounding
 		}
 	}
 
@@ -744,7 +762,8 @@ static int SDLCALL ConsoleThreadFunc(void*)
 				switch (e.window.event)
 				{
 				case SDL_WINDOWEVENT_FOCUS_LOST:
-					Paused = true;
+					if (!SDL_getenv("SNIPES_NO_AUTOPAUSE")) // set by scripts/capture-screenshots.sh
+						Paused = true;
 					break;
 				case SDL_WINDOWEVENT_FOCUS_GAINED:
 					Paused = false;
@@ -755,13 +774,13 @@ static int SDLCALL ConsoleThreadFunc(void*)
 						int newHeight = (int)(e.window.data2 * PixelScale + 0.5);
 						{
 							double  widthRatio = (double)newWidth  / (WINDOW_WIDTH  * TileWidth);
-							double heightRatio = (double)newHeight / (WINDOW_HEIGHT * TileHeight);
+							double heightRatio = (double)newHeight / WindowContentHeight();
 							if ( widthRatio < 1)  widthRatio = 1. /  widthRatio;
 							if (heightRatio < 1) heightRatio = 1. / heightRatio;
 							
 							if (heightRatio > widthRatio)
 							{
-								TileHeight = (newHeight + WINDOW_HEIGHT/2) / WINDOW_HEIGHT;
+								TileHeight = (int)(newHeight / WINDOW_HEIGHT_IN_ROWS + 0.5);
 								TileWidth = ((TileHeight*3+2)/4);
 							}
 							else
@@ -787,7 +806,7 @@ static int SDLCALL ConsoleThreadFunc(void*)
 						}
 
 						CloseUIFonts(); // their sizes follow the window
-						SDL_SetWindowSize(win, ToPoints(WINDOW_WIDTH * TileWidth), ToPoints(WINDOW_HEIGHT * TileHeight));
+						SDL_SetWindowSize(win, ToPoints(WINDOW_WIDTH * TileWidth), ToPoints(WindowContentHeight()));
 					}
 					break;
 				}
@@ -811,7 +830,7 @@ static int SDLCALL ConsoleThreadFunc(void*)
 			SDL_RenderClear(ren);
 
 			SDL_LockMutex(ScreenMutex);
-			for (Uint y = 0; y < WINDOW_HEIGHT; y++)
+			for (Uint y = VIEWPORT_ROW; y < WINDOW_HEIGHT; y++) // rows above VIEWPORT_ROW are the old text status line
 				for (Uint x = 0; x < WINDOW_WIDTH; x++)
 					RenderCharacterAt(ren, font, x, y);
 			SDL_UnlockMutex(ScreenMutex);
@@ -852,7 +871,7 @@ static int SDLCALL ConsoleThreadFunc(void*)
 			{
 				SDL_Color c = ScreenColors[OutputTextColor];
 				SDL_SetRenderDrawColor(ren, c.r, c.g, c.b, c.a);
-				SDL_Rect rect = { (int)OutputCursorX * TileWidth, (int)OutputCursorY * TileHeight, TileWidth, TileHeight };
+				SDL_Rect rect = { (int)OutputCursorX * TileWidth, RowTop(OutputCursorY), TileWidth, TileHeight };
 				SDL_RenderFillRect(ren, &rect);
 			}
 
@@ -868,6 +887,13 @@ static int SDLCALL ConsoleThreadFunc(void*)
 				screenshot_filename = NULL;
 			}
 #endif
+
+			int outputWidth;
+			SDL_GetRendererOutputSize(ren, &outputWidth, NULL);
+			SDL_LockMutex(ScreenMutex);
+			HudValues hud = Hud;
+			SDL_UnlockMutex(ScreenMutex);
+			DrawHud(ren, outputWidth, HudHeight(), hud);
 		}
 
 		SDL_RenderPresent(ren);
