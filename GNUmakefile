@@ -26,5 +26,6 @@ snipes-tests : $(TEST_SOURCES) $(wildcard src/*.h src/sdl/*.h) GNUmakefile
 
 test : snipes-tests
 	./snipes-tests
+	scripts/check-source-encoding.sh
 
 .PHONY : clean test

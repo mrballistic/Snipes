@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 // Chooses the tile size, in pixels, that best fits a renderer output of
 // outputWidth×outputHeight pixels showing `columns` columns and, under the
