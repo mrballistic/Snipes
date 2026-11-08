@@ -48,6 +48,8 @@ This is how the release build is made.
 1. Install the dependencies above, and put `SnipesConsole.ttf` in the repository root so it gets bundled.
 2. Run `scripts/make-macos-app.sh`. It builds the game, copies the Homebrew libraries, fonts and icon into the app, signs everything with your first “Developer ID Application” identity, and writes `dist/Snipes.app` plus a zip of it.
 
+With `create-dmg` installed (`brew install create-dmg`), it also writes a disk image: the app on the left, an Applications shortcut on the right, and a background with an arrow between them, drawn by `scripts/dmg-background.swift`. The disk image is signed, and notarized along with the app.
+
 To notarize as well, store your Apple credentials once, then pass the profile name:
 
 ```

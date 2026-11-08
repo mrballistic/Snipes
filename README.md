@@ -20,7 +20,7 @@ The game logic is unchanged, so replays recorded with the original port still pl
 
 ### Download for macOS
 
-**[Download the latest release](https://github.com/mrballistic/Snipes/releases/latest)**, unzip it, and drag `Snipes.app` to your Applications folder.
+**[Download the latest release](https://github.com/mrballistic/Snipes/releases/latest)**: open the `.dmg` and drag Snipes into your Applications folder. (A `.zip` of the app is there too.)
 
 - It's signed with a Developer ID and notarized by Apple, so it opens without a Gatekeeper warning.
 - It's self-contained: SDL and the original font are bundled, so you don't need Homebrew.

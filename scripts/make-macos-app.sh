@@ -10,6 +10,9 @@
 #                     xcrun notarytool store-credentials <name> --apple-id <id> --team-id <team>
 #   BUNDLE_ID       CFBundleIdentifier (default: com.mrballistic.snipes)
 #
+# Also writes a drag-to-Applications disk image if create-dmg is installed
+# (brew install create-dmg).
+#
 # Requires Homebrew's sdl2-compat (or sdl2), sdl3 and sdl2_ttf. Put SnipesConsole.ttf in the
 # repo root to bundle the authentic font; otherwise the game falls back to Menlo.
 set -euo pipefail
@@ -162,5 +165,46 @@ else
 	echo "note: NOTARY_PROFILE not set; skipping notarization (Gatekeeper will warn on other Macs)"
 fi
 
+# Disk image: the app on the left, an Applications shortcut on the right, and a
+# background with an arrow between them (scripts/dmg-background.swift).
+DMG=$DIST/Snipes-$VERSION-macos-$(uname -m).dmg
+if command -v create-dmg >/dev/null; then
+	echo "==> Building disk image"
+	STAGE=$DIST/dmg-staging
+	rm -rf "$STAGE" "$DMG"
+	mkdir -p "$STAGE"
+	ditto "$APP" "$STAGE/Snipes.app"
+	swift scripts/dmg-background.swift "$DIST/dmg-background.png" 1
+	swift scripts/dmg-background.swift "$DIST/dmg-background@2x.png" 2
+	tiffutil -cathidpicheck "$DIST/dmg-background.png" "$DIST/dmg-background@2x.png" -out "$DIST/dmg-background.tiff" >/dev/null
+	VOLICON=$(ls "$APP/Contents/Resources/"*.icns 2>/dev/null | head -1 || true)
+	# Icon positions must match those drawn in scripts/dmg-background.swift
+	create-dmg \
+		--volname "Snipes" \
+		${VOLICON:+--volicon "$VOLICON"} \
+		--background "$DIST/dmg-background.tiff" \
+		--window-pos 200 120 \
+		--window-size 640 400 \
+		--icon-size 112 \
+		--text-size 13 \
+		--icon "Snipes.app" 170 185 \
+		--hide-extension "Snipes.app" \
+		--app-drop-link 470 185 \
+		"$DMG" "$STAGE" >/dev/null
+	rm -rf "$STAGE" "$DIST"/dmg-background*
+	codesign --force --timestamp --sign "$SIGN_IDENTITY" "$DMG"
+	if [[ -n "${NOTARY_PROFILE:-}" ]]; then
+		echo "==> Notarizing disk image"
+		xcrun notarytool submit "$DMG" --keychain-profile "$NOTARY_PROFILE" --wait
+		xcrun stapler staple "$DMG"
+		spctl --assess --type open --context context:primary-signature --verbose "$DMG"
+	fi
+else
+	echo "note: create-dmg not installed (brew install create-dmg); skipping the disk image"
+	DMG=
+fi
+
 echo "==> Done: $APP"
 echo "         $ZIP"
+[[ -n "$DMG" ]] && echo "         $DMG"
+true
