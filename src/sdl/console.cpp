@@ -579,7 +579,7 @@ bool ChooseSkillLevel(Uint &letter, Uint &number)
 	SDL_AtomicSet(&StartScreenActive, 1);
 	int result;
 	while ((result = SDL_AtomicGet(&StartScreenResult)) == StartAction_None && !instant_quit)
-		SleepTimeslice();
+		SDL_Delay(10); // a player won't notice 10ms, and the CPU will thank us
 	SDL_AtomicSet(&StartScreenActive, 0);
 	if (result != StartAction_Start)
 		return false;
@@ -738,13 +738,20 @@ static int SDLCALL ConsoleThreadFunc(void*)
 
 	ClearGlyphs();
 
+	// The start screen is static, so it is only redrawn and presented after an
+	// event or a change of level; otherwise the loop just waits.
+	StartScreenFrame presentedStartScreen = {};
+	bool startScreenPresented = false;
+
 	while (!Exiting)
 	{
 		ApplyTextInputRequest();
 
 		SDL_Event e;
+		bool hadEvent = false;
 		while (SDL_PollEvent(&e))
 		{
+			hadEvent = true;
 			switch (e.type)
 			{
 			case SDL_QUIT:
@@ -827,10 +834,19 @@ static int SDLCALL ConsoleThreadFunc(void*)
 			SDL_LockMutex(ScreenMutex);
 			StartSelection sel = StartScreenSelection;
 			SDL_UnlockMutex(ScreenMutex);
+			StartScreenFrame frame = { outputWidth, outputHeight, sel };
+			if (startScreenPresented && !hadEvent && SameStartScreenFrame(frame, presentedStartScreen))
+			{
+				SDL_Delay(10); // nothing changed; what's on screen is still right
+				continue;
+			}
 			DrawStartScreen(ren, outputWidth, outputHeight, sel);
+			presentedStartScreen = frame;
+			startScreenPresented = true;
 		}
 		else
 		{
+			startScreenPresented = false;
 			SDL_SetRenderDrawColor(ren, 0, 0, 0, 255);
 
 			SDL_RenderClear(ren);
@@ -909,6 +925,7 @@ static int SDLCALL ConsoleThreadFunc(void*)
 
 	DestroyGlyphs();
 	CloseUIFonts();
+	CloseStartScreen();
 
 	SDL_DestroyRenderer(ren);
 	SDL_DestroyWindow(win);

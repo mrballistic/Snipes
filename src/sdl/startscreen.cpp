@@ -217,7 +217,7 @@ void DrawPressReturn(SDL_Renderer *ren, const Scale &s, double y)
 
 } // namespace
 
-void DrawStartScreen(SDL_Renderer *ren, int w, int h, const StartSelection &sel)
+static void RenderStartScreen(SDL_Renderer *ren, int w, int h, const StartSelection &sel)
 {
 	Scale s;
 	s.u = SDL_min(w / 720.0, h / 600.0);
@@ -242,4 +242,49 @@ void DrawStartScreen(SDL_Renderer *ren, int w, int h, const StartSelection &sel)
 	int lineH = s(17.6), bottom = h - s(18);
 	DrawUIText(ren, credits, "© 1982 SuperSet Software Corp. All rights reserved.", w / 2, bottom - 2 * lineH, RGB(Credits), Align_Center);
 	DrawUIText(ren, credits, "Ported by David Ellsworth · macOS port by mrBallistic", w / 2, bottom - lineH, RGB(Credits), Align_Center);
+}
+
+// The screen only changes when the selection or the window size does, and
+// drawing it (hundreds of glyphs for the glowing art) is far too costly to
+// repeat every frame. So draw it into a texture once and reuse that.
+static SDL_Texture *Cache;
+static StartScreenFrame CachedFrame;
+
+void DrawStartScreen(SDL_Renderer *ren, int w, int h, const StartSelection &sel)
+{
+	StartScreenFrame frame = { w, h, sel };
+	if (!SDL_RenderTargetSupported(ren))
+	{
+		RenderStartScreen(ren, w, h, sel);
+		return;
+	}
+	if (Cache && (CachedFrame.width != w || CachedFrame.height != h))
+		CloseStartScreen();
+	if (!Cache)
+	{
+		Cache = SDL_CreateTexture(ren, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, w, h);
+		if (!Cache)
+		{
+			RenderStartScreen(ren, w, h, sel);
+			return;
+		}
+	}
+	else
+	if (SameStartScreenFrame(frame, CachedFrame))
+	{
+		SDL_RenderCopy(ren, Cache, NULL, NULL);
+		return;
+	}
+	SDL_SetRenderTarget(ren, Cache);
+	RenderStartScreen(ren, w, h, sel);
+	SDL_SetRenderTarget(ren, NULL);
+	CachedFrame = frame;
+	SDL_RenderCopy(ren, Cache, NULL, NULL);
+}
+
+void CloseStartScreen()
+{
+	if (Cache)
+		SDL_DestroyTexture(Cache);
+	Cache = NULL;
 }

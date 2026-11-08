@@ -16,6 +16,10 @@ enum StartModifier { StartModifier_None, StartModifier_Control, StartModifier_Co
 // except Ctrl+C, which quits.
 StartAction StartScreenKey(StartSelection &sel, StartKey key, char chr = 0, StartModifier mod = StartModifier_None);
 
+// What the start screen shows, so a drawing of it can be reused until this changes.
+struct StartScreenFrame { int width, height; StartSelection sel; };
+bool SameStartScreenFrame(const StartScreenFrame &a, const StartScreenFrame &b);
+
 // The last level played is saved as two characters, e.g. "M4".
 bool ParseSavedLevel(const char *text, StartSelection &sel); // leaves sel unchanged on failure
 void FormatSavedLevel(const StartSelection &sel, char out[4]);

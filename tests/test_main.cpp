@@ -121,6 +121,16 @@ static void TestFitTilesToOutput()
 	CHECK(TilesAre(1800,  940, 30, 40, 45, 60)); // window dragged wider
 }
 
+static void TestStartScreenFrame()
+{
+	StartScreenFrame a = { 1200, 940, Sel('M', 4) }, b = a;
+	CHECK(SameStartScreenFrame(a, b));
+	b = a; b.sel.letter = L('N'); CHECK(!SameStartScreenFrame(a, b));
+	b = a; b.sel.number = 5;      CHECK(!SameStartScreenFrame(a, b));
+	b = a; b.width = 1201;        CHECK(!SameStartScreenFrame(a, b));
+	b = a; b.height = 941;        CHECK(!SameStartScreenFrame(a, b));
+}
+
 int main()
 {
 	TestDescribeSkillLevel();
@@ -128,6 +138,7 @@ int main()
 	TestStartScreenKey();
 	TestSavedLevel();
 	TestFitTilesToOutput();
+	TestStartScreenFrame();
 	printf("%d checks, %d failures\n", checks, failures);
 	return failures ? 1 : 0;
 }

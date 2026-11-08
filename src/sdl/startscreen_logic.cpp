@@ -48,3 +48,8 @@ void FormatSavedLevel(const StartSelection &sel, char out[4])
 	out[2] = 0;
 	out[3] = 0;
 }
+
+bool SameStartScreenFrame(const StartScreenFrame &a, const StartScreenFrame &b)
+{
+	return a.width == b.width && a.height == b.height && a.sel.letter == b.sel.letter && a.sel.number == b.sel.number;
+}
