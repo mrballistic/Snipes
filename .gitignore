@@ -18,3 +18,6 @@
 # macOS app bundle
 /dist
 .DS_Store
+.superpowers/
+.impeccable/
+.playwright-mcp/
