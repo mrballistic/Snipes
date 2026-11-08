@@ -1,4 +1,4 @@
-SOURCES=$(addsuffix .cpp, Snipes skill $(addprefix sdl/, console keyboard sound timer))
+SOURCES=$(addprefix src/, $(addsuffix .cpp, Snipes skill $(addprefix sdl/, console keyboard sound timer)))
 CFLAGS=-std=c++11 $(shell sdl2-config --cflags)
 # Sources use <SDL2/...> includes, so also add the parent include dir (needed for Homebrew)
 CFLAGS+=-I$(shell sdl2-config --prefix)/include
@@ -9,19 +9,19 @@ LDFLAGS=$(shell sdl2-config --libs) -lm -lSDL2_ttf
 CXX=g++
 #CXX="clang++"
 
-snipes : $(SOURCES) config.h GNUmakefile
+snipes : $(SOURCES) $(wildcard src/*.h src/sdl/*.h) src/config.h GNUmakefile
 	$(CXX) -o $@ $(CFLAGS) $(CFLAGS2) $(SOURCES) $(LDFLAGS)
 
-config.h :
-	@echo "Automatically creating config.h with default settings - edit this file to customize your build"
-	cp config-sample.h config.h
+src/config.h :
+	@echo "Automatically creating src/config.h with default settings - edit this file to customize your build"
+	cp src/config-sample.h src/config.h
 
 clean :
 	rm -f snipes snipes-tests
 
-TEST_SOURCES=tests/test_main.cpp skill.cpp sdl/hudformat.cpp
+TEST_SOURCES=tests/test_main.cpp src/skill.cpp src/sdl/hudformat.cpp
 
-snipes-tests : $(TEST_SOURCES) $(wildcard *.h sdl/*.h) GNUmakefile
+snipes-tests : $(TEST_SOURCES) $(wildcard src/*.h src/sdl/*.h) GNUmakefile
 	$(CXX) -std=c++11 -Wall -Wextra -o $@ $(TEST_SOURCES)
 
 test : snipes-tests

@@ -24,72 +24,72 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Snipes.cpp">
+    <ClCompile Include="src\Snipes.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="skill.cpp">
+    <ClCompile Include="src\skill.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="windows/console.cpp">
+    <ClCompile Include="src\windows\console.cpp">
       <Filter>Source Files\Windows</Filter>
     </ClCompile>
-    <ClCompile Include="windows/keyboard.cpp">
+    <ClCompile Include="src\windows\keyboard.cpp">
       <Filter>Source Files\Windows</Filter>
     </ClCompile>
-    <ClCompile Include="windows/sound.cpp">
+    <ClCompile Include="src\windows\sound.cpp">
       <Filter>Source Files\Windows</Filter>
     </ClCompile>
-    <ClCompile Include="windows/timer.cpp">
+    <ClCompile Include="src\windows\timer.cpp">
       <Filter>Source Files\Windows</Filter>
     </ClCompile>
-    <ClCompile Include="sdl\console.cpp">
+    <ClCompile Include="src\sdl\console.cpp">
       <Filter>Source Files\SDL</Filter>
     </ClCompile>
-    <ClCompile Include="sdl\keyboard.cpp">
+    <ClCompile Include="src\sdl\keyboard.cpp">
       <Filter>Source Files\SDL</Filter>
     </ClCompile>
-    <ClCompile Include="sdl\sound.cpp">
+    <ClCompile Include="src\sdl\sound.cpp">
       <Filter>Source Files\SDL</Filter>
     </ClCompile>
-    <ClCompile Include="sdl\timer.cpp">
+    <ClCompile Include="src\sdl\timer.cpp">
       <Filter>Source Files\SDL</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="config.h">
+    <ClInclude Include="src\config.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="config-sample.h">
+    <ClInclude Include="src\config-sample.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="sound.h">
+    <ClInclude Include="src\sound.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="types.h">
+    <ClInclude Include="src\types.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="keyboard.h">
+    <ClInclude Include="src\keyboard.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Snipes.h">
+    <ClInclude Include="src\Snipes.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="skill.h">
+    <ClInclude Include="src\skill.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="macros.h">
+    <ClInclude Include="src\macros.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="platform.h">
+    <ClInclude Include="src\platform.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="timer.h">
+    <ClInclude Include="src\timer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="console.h">
+    <ClInclude Include="src\console.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="sdl\sdl.h">
+    <ClInclude Include="src\sdl\sdl.h">
       <Filter>Header Files\SDL</Filter>
     </ClInclude>
   </ItemGroup>

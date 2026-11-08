@@ -41,12 +41,12 @@ else
 	echo "warning: SnipesConsole.ttf not found; the app will use a fallback font" >&2
 fi
 
-# App icon: Icon.icon (Icon Composer) in the repo root, or macos/AppIcon.xcassets
+# App icon: art/Icon.icon (Icon Composer), or macos/AppIcon.xcassets
 # (Xcode asset catalog containing an AppIcon set), or a ready-made macos/AppIcon.icns.
 MIN_MACOS=$(sw_vers -productVersion | cut -d. -f1).0
 ICON_KEYS=
 ICON_SRC=
-for c in Icon.icon macos/AppIcon.xcassets; do [[ -e "$c" ]] && { ICON_SRC=$c; break; }; done
+for c in art/Icon.icon macos/AppIcon.xcassets; do [[ -e "$c" ]] && { ICON_SRC=$c; break; }; done
 if [[ -n "$ICON_SRC" ]]; then
 	# actool names the icon after the .icon file, or after the asset catalog's icon set
 	ICON_NAME=$([[ "$ICON_SRC" == *.icon ]] && basename "$ICON_SRC" .icon || echo AppIcon)

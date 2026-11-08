@@ -31,13 +31,13 @@ On startup, the SDL build will attempt to load a custom font, which can be obtai
 
 #### With Visual Studio
 
-1. Copy `config-sample.h` to `config.h` (and edit as/if desired)
+1. Copy `src/config-sample.h` to `src/config.h` (and edit as/if desired)
 2. Open and build the Visual Studio solution file (`Sniper.sln`).
    The Visual Studio project file has configurations targeting SDL and Windows console graphics.
 
 #### With GNU Make
 
-1. (Optional) Copy `config-sample.h` to `config.h`, and edit as desired
+1. (Optional) Copy `src/config-sample.h` to `src/config.h`, and edit as desired
 2. Run `make` to compile an SDL build.
 
 For Arch Linux, you can use the [snipes-git](https://aur.archlinux.org/packages/snipes-git/) AUR package.
@@ -47,7 +47,7 @@ For Arch Linux, you can use the [snipes-git](https://aur.archlinux.org/packages/
 This is how the release build is made.
 
 1. Install the dependencies: `brew install sdl2 sdl3 sdl2_ttf`
-2. Put `SnipesConsole.ttf` in the repository root to bundle it. The app icon is `Icon.icon`, an Icon Composer file, also in the root.
+2. Put `SnipesConsole.ttf` in the repository root to bundle it. The app icon is `art/Icon.icon`, an Icon Composer file; `art/` also holds its source artwork.
 3. Run `scripts/make-macos-app.sh`. It builds the game, bundles the libraries, signs everything with your first "Developer ID Application" identity, and writes `dist/Snipes.app` plus a zip of it.
 
 To notarize as well, store your Apple credentials once, then pass the profile name:

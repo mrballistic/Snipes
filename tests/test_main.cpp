@@ -3,8 +3,8 @@
 
 #include <stdio.h>
 #include <string.h>
-#include "../skill.h"
-#include "../sdl/hudformat.h"
+#include "../src/skill.h"
+#include "../src/sdl/hudformat.h"
 
 static int failures = 0, checks = 0;
 
