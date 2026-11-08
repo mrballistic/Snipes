@@ -176,6 +176,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='SDL Debug|Win32'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Snipes.cpp" />
+    <ClCompile Include="skill.cpp" />
     <ClCompile Include="windows/sound.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='SDL Release|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='SDL Debug|Win32'">true</ExcludedFromBuild>
@@ -197,6 +198,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
     </ClInclude>
     <ClInclude Include="Snipes.h" />
+    <ClInclude Include="skill.h" />
     <ClInclude Include="sound.h" />
     <ClInclude Include="timer.h" />
     <ClInclude Include="types.h" />

@@ -27,6 +27,9 @@
     <ClCompile Include="Snipes.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="skill.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="windows/console.cpp">
       <Filter>Source Files\Windows</Filter>
     </ClCompile>
@@ -69,6 +72,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Snipes.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="skill.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="macros.h">

@@ -1,4 +1,4 @@
-SOURCES=$(addsuffix .cpp, Snipes $(addprefix sdl/, console keyboard sound timer))
+SOURCES=$(addsuffix .cpp, Snipes skill $(addprefix sdl/, console keyboard sound timer))
 CFLAGS=-std=c++11 $(shell sdl2-config --cflags)
 # Sources use <SDL2/...> includes, so also add the parent include dir (needed for Homebrew)
 CFLAGS+=-I$(shell sdl2-config --prefix)/include
@@ -17,4 +17,14 @@ config.h :
 	cp config-sample.h config.h
 
 clean :
-	rm -f snipes
+	rm -f snipes snipes-tests
+
+TEST_SOURCES=tests/test_main.cpp skill.cpp
+
+snipes-tests : $(TEST_SOURCES) $(wildcard *.h sdl/*.h) GNUmakefile
+	$(CXX) -std=c++11 -Wall -Wextra -o $@ $(TEST_SOURCES)
+
+test : snipes-tests
+	./snipes-tests
+
+.PHONY : clean test

@@ -12,6 +12,7 @@
 #include "sound.h"
 #include "keyboard.h"
 #include "platform.h"
+#include "skill.h"
 
 bool got_ctrl_break = false;
 bool forfeit_match = false;
@@ -110,13 +111,6 @@ void ReadSkillLevel()
 		}
 }
 
-static const BYTE snipeShootingAccuracyTable    ['Z'-'A'+1] = {2, 3, 4, 3, 4, 4, 3, 4, 3, 4, 4, 5, 3, 4, 3, 4, 3, 4, 3, 4, 4, 5, 4, 4, 5, 5}; // higher number = higher accuracy
-static const bool enableSmallSnipesTable        ['Z'-'A'+1] = {0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1};
-static const bool bouncingBulletTable           ['Z'-'A'+1] = {0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
-static const BYTE smallSnipeExplosionChanceTable['Z'-'A'+1] = {0x7F, 0x7F, 0x7F, 0x3F, 0x3F, 0x1F, 0x7F, 0x7F, 0x3F, 0x3F, 0x1F, 0x1F, 0x7F, 0x7F, 0x3F, 0x3F, 0x7F, 0x7F, 0x3F, 0x3F, 0x1F, 0x1F, 0x3F, 0x1F, 0x1F, 0x0F}; // lower number = higher chance
-static const BYTE maxSnipesTable                ['9'-'1'+1] = { 10,  20,  30,  40,  60,  80, 100, 120, 150};
-static const BYTE numSnipePortalsTable          ['9'-'1'+1] = {  3,   3,   4,   4,   5,   5,   6,   8,  10};
-static const BYTE numLivesTable                 ['9'-'1'+1] = {  5,   5,   5,   5,   5,   4,   4,   3,   2};
 
 bool enableElectricWalls, enableSmallSnipes, snipePortalsResistSnipeSpears, enableBouncingBullets;
 BYTE snipeShootingAccuracy, smallSnipeExplosionChance, maxSnipes, numSnipePortalsAtStart, numLives;
