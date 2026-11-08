@@ -22,4 +22,9 @@ void CloseDirectConsole(Uint lineNum);
 void ClearConsole();
 
 int OpenConsole();
+
+// SDL build: shows the graphical start screen, starting from the given level,
+// and blocks until the player starts a game (returning true with the chosen
+// level) or quits (returning false).
+bool ChooseSkillLevel(Uint &letter, Uint &number);
 void CloseConsole();

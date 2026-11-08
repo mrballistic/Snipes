@@ -35,6 +35,10 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$APP/Contents/Frameworks"
 cp snipes "$APP/Contents/MacOS/Snipes"
 
+# IBM Plex Mono (SIL OFL) for the start screen and the in-game bar, with its license
+mkdir -p "$APP/Contents/Resources/fonts"
+cp fonts/IBMPlexMono-Regular.ttf fonts/IBMPlexMono-Bold.ttf fonts/IBMPlexMono-LICENSE.txt "$APP/Contents/Resources/fonts/"
+
 if [[ -f SnipesConsole.ttf ]]; then
 	cp SnipesConsole.ttf "$APP/Contents/Resources/"
 else

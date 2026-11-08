@@ -10,6 +10,8 @@
 #include "../platform.h"
 #include "../timer.h"
 #include "sdl.h"
+#include "uifont.h"
+#include "startscreen.h"
 #if defined(__APPLE__)
 #include <unistd.h>
 #endif
@@ -460,7 +462,10 @@ static void DestroyGlyphs()
 // not look like the original. Once a font has been chosen, it is reused for
 // subsequent calls (e.g. when the window is resized), and hinting is applied.
 static char BundledFontPath[1024]; // set by main() when running from a macOS .app bundle
-static TTF_Font* OpenGameFont(int size)
+static char ResourceDir[1024];     // likewise; empty means the working directory
+const char *ResourceDirectory() { return ResourceDir; }
+
+TTF_Font* OpenGameFont(int size)
 {
 	static const char* const fontFilenames[] =
 	{
@@ -503,6 +508,113 @@ static TTF_Font* OpenGameFont(int size)
 	return font;
 }
 
+// The start screen. The game thread calls ChooseSkillLevel() and blocks; the
+// console loop draws the screen and feeds it key presses until the player
+// starts a game or quits.
+static SDL_atomic_t StartScreenActive, StartScreenResult;
+static StartSelection StartScreenSelection; // guarded by ScreenMutex
+
+// The last level played is remembered in the user's preferences directory.
+static void GetSavedLevelPath(char *path, size_t size)
+{
+	char *prefPath = SDL_GetPrefPath("", "Snipes");
+	snprintf(path, size, "%slevel.txt", prefPath ? prefPath : "");
+	SDL_free(prefPath);
+}
+static void LoadSavedLevel(StartSelection &sel)
+{
+	char path[1100], text[16] = {};
+	GetSavedLevelPath(path, sizeof(path));
+	if (FILE *f = fopen(path, "r"))
+	{
+		if (fgets(text, sizeof(text), f))
+			ParseSavedLevel(text, sel); // leaves sel alone if the file is garbled
+		fclose(f);
+	}
+}
+static void SaveLevel(const StartSelection &sel)
+{
+	char path[1100], text[4];
+	GetSavedLevelPath(path, sizeof(path));
+	FormatSavedLevel(sel, text);
+	if (FILE *f = fopen(path, "w"))
+	{
+		fprintf(f, "%s\n", text);
+		fclose(f);
+	}
+}
+
+bool ChooseSkillLevel(Uint &letter, Uint &number)
+{
+	static bool loadedSavedLevel = false;
+	StartSelection sel = { letter, number };
+	if (!loadedSavedLevel)
+	{
+		loadedSavedLevel = true;
+		LoadSavedLevel(sel);
+	}
+	SDL_LockMutex(ScreenMutex);
+	StartScreenSelection = sel;
+	SDL_UnlockMutex(ScreenMutex);
+
+	SDL_AtomicSet(&StartScreenResult, StartAction_None);
+	SDL_AtomicSet(&StartScreenActive, 1);
+	int result;
+	while ((result = SDL_AtomicGet(&StartScreenResult)) == StartAction_None && !instant_quit)
+		SleepTimeslice();
+	SDL_AtomicSet(&StartScreenActive, 0);
+	if (result != StartAction_Start)
+		return false;
+
+	SDL_LockMutex(ScreenMutex);
+	sel = StartScreenSelection;
+	SDL_UnlockMutex(ScreenMutex);
+	letter = sel.letter;
+	number = sel.number;
+	SaveLevel(sel);
+	return true;
+}
+
+// Called by the console loop for key presses while the start screen is up;
+// they don't reach HandleKey, so nothing typed here leaks into the game.
+static void HandleStartScreenKey(const SDL_KeyboardEvent &e)
+{
+	StartKey key;
+	char chr = 0;
+	SDL_Keycode sym = e.keysym.sym;
+	switch (sym)
+	{
+	case SDLK_LEFT    : key = StartKey_Left  ; break;
+	case SDLK_RIGHT   : key = StartKey_Right ; break;
+	case SDLK_UP      : key = StartKey_Up    ; break;
+	case SDLK_DOWN    : key = StartKey_Down  ; break;
+	case SDLK_RETURN  :
+	case SDLK_KP_ENTER: key = StartKey_Return; break;
+	case SDLK_ESCAPE  : key = StartKey_Escape; break;
+	default:
+		key = StartKey_Char;
+		if ((sym >= SDLK_a && sym <= SDLK_z) || (sym >= SDLK_1 && sym <= SDLK_9))
+			chr = (char)sym;
+		else
+		if (sym >= SDLK_KP_1 && sym <= SDLK_KP_9) // keypad digits are consecutive in SDL2
+			chr = (char)('1' + (sym - SDLK_KP_1));
+		else
+			return;
+		break;
+	}
+	SDL_LockMutex(ScreenMutex);
+	StartAction action = StartScreenKey(StartScreenSelection, key, chr);
+	SDL_UnlockMutex(ScreenMutex);
+	if (action != StartAction_None)
+		SDL_AtomicSet(&StartScreenResult, action);
+}
+
+// Window sizes are in points, but everything is rendered in pixels; on a
+// Retina display there are two pixels per point. TileWidth, TileHeight and
+// FontSize are in pixels.
+static double PixelScale = 1;
+static int ToPoints(int pixels) { return (int)(pixels / PixelScale + 0.5); }
+
 static int SDLCALL ConsoleThreadFunc(void*)
 {
 	SDL_Rect usableRect;
@@ -540,7 +652,7 @@ static int SDLCALL ConsoleThreadFunc(void*)
 	int top, left, bottom, right, totalWidth, totalHeight;
 	for (Uint i=0; i<2; i++)
 	{
-		win = SDL_CreateWindow("Snipes", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WINDOW_WIDTH * TileWidth, WINDOW_HEIGHT * TileHeight, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+		win = SDL_CreateWindow("Snipes", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WINDOW_WIDTH * TileWidth, WINDOW_HEIGHT * TileHeight, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
 		if (!win)
 		{
 			fprintf(stderr, "SDL_CreateWindow: %s\n", SDL_GetError());
@@ -567,19 +679,34 @@ static int SDLCALL ConsoleThreadFunc(void*)
 		return 1;
 	}
 
-	TTF_Font* font = OpenGameFont(FontSize);
-	if (!font)
-	{
-		TTF_Quit();
-		return 1;
-	}
-
 	SDL_Renderer *ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 	if (!ren)
 	{
 		SDL_DestroyWindow(win);
 		fprintf(stderr, "SDL_CreateRenderer: %s\n", SDL_GetError());
-		TTF_CloseFont(font);
+		TTF_Quit();
+		return 1;
+	}
+
+	// The tile sizes chosen above are in points; convert them to pixels
+	{
+		int outputWidth, windowWidth;
+		SDL_GetRendererOutputSize(ren, &outputWidth, NULL);
+		SDL_GetWindowSize(win, &windowWidth, NULL);
+		if (windowWidth > 0 && outputWidth != windowWidth)
+		{
+			PixelScale = (double)outputWidth / windowWidth;
+			TileWidth  = (int)(TileWidth  * PixelScale + 0.5);
+			TileHeight = (int)(TileHeight * PixelScale + 0.5);
+			FontSize   = (int)(FontSize   * PixelScale + 0.5);
+		}
+	}
+
+	TTF_Font* font = OpenGameFont(FontSize);
+	if (!font)
+	{
+		SDL_DestroyRenderer(ren);
+		SDL_DestroyWindow(win);
 		TTF_Quit();
 		return 1;
 	}
@@ -600,7 +727,10 @@ static int SDLCALL ConsoleThreadFunc(void*)
 				break;
 			case SDL_KEYDOWN:
 			case SDL_KEYUP:
-				HandleKey((SDL_KeyboardEvent*)&e);
+				if (e.type == SDL_KEYDOWN && SDL_AtomicGet(&StartScreenActive))
+					HandleStartScreenKey(e.key);
+				else
+					HandleKey((SDL_KeyboardEvent*)&e);
 				break;
 			case SDL_TEXTINPUT:
 				/* Add new text onto the end of our text */
@@ -621,8 +751,8 @@ static int SDLCALL ConsoleThreadFunc(void*)
 					break;
 				case SDL_WINDOWEVENT_RESIZED:
 					{
-						int newWidth  = e.window.data1;
-						int newHeight = e.window.data2;
+						int newWidth  = (int)(e.window.data1 * PixelScale + 0.5); // in pixels
+						int newHeight = (int)(e.window.data2 * PixelScale + 0.5);
 						{
 							double  widthRatio = (double)newWidth  / (WINDOW_WIDTH  * TileWidth);
 							double heightRatio = (double)newHeight / (WINDOW_HEIGHT * TileHeight);
@@ -656,7 +786,8 @@ static int SDLCALL ConsoleThreadFunc(void*)
 							font = newFont;
 						}
 
-						SDL_SetWindowSize(win, WINDOW_WIDTH * TileWidth, WINDOW_HEIGHT * TileHeight);
+						CloseUIFonts(); // their sizes follow the window
+						SDL_SetWindowSize(win, ToPoints(WINDOW_WIDTH * TileWidth), ToPoints(WINDOW_HEIGHT * TileHeight));
 					}
 					break;
 				}
@@ -664,74 +795,88 @@ static int SDLCALL ConsoleThreadFunc(void*)
 			}
 		}
 
-		SDL_SetRenderDrawColor(ren, 0, 0, 0, 255);
-
-		SDL_RenderClear(ren);
-
-		SDL_LockMutex(ScreenMutex);
-		for (Uint y = 0; y < WINDOW_HEIGHT; y++)
-			for (Uint x = 0; x < WINDOW_WIDTH; x++)
-				RenderCharacterAt(ren, font, x, y);
-		SDL_UnlockMutex(ScreenMutex);
-#if defined(CHEAT_OMNISCIENCE) && defined(CHEAT_OMNISCIENCE_SHOW_NORMAL_VIEWPORT)
+		if (SDL_AtomicGet(&StartScreenActive))
 		{
-			SDL_Rect rect;
-
-			// darken outside area
-
-			SDL_SetRenderDrawColor(ren, CHEAT_OMNISCIENCE_RGBA_OUTSIDE_NORMAL_VIEWPORT);
-			SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_BLEND);
-
-			rect.w = WINDOW_WIDTH * TileWidth;  rect.x = 0; rect.y = VIEWPORT_ROW * TileHeight; rect.h = (VIEWPORT_HEIGHT/2 - (25 - VIEWPORT_ROW)/2) * TileHeight;
-			SDL_RenderFillRect(ren, &rect);
-
-			rect.y = (VIEWPORT_ROW + VIEWPORT_HEIGHT/2 + (25 - VIEWPORT_ROW)/2) * TileHeight;
-			SDL_RenderFillRect(ren, &rect);
-
-			rect.x = 0; rect.y = (VIEWPORT_ROW + VIEWPORT_HEIGHT/2 - (25 - VIEWPORT_ROW)/2) * TileHeight; rect.w = (WINDOW_WIDTH/2 - 40/2) * TileWidth; rect.h = ((25 - VIEWPORT_ROW)/2*2) * TileHeight;
-			SDL_RenderFillRect(ren, &rect);
-
-			rect.x = (WINDOW_WIDTH/2 + 40/2) * TileWidth;
-			SDL_RenderFillRect(ren, &rect);
-
-	#ifdef CHEAT_OMNISCIENCE_RGBA_AROUND_NORMAAL_VIEWPORT
-			// draw gray rectangle around inside area
-			rect.x = (WINDOW_WIDTH/2 - 40/2) * TileWidth - 1; rect.y = (VIEWPORT_ROW + VIEWPORT_HEIGHT/2 - (25 - VIEWPORT_ROW)/2  ) * TileHeight - 1;
-			rect.w = (                 80/2) * TileWidth + 2; rect.h = (                                   (25 - VIEWPORT_ROW)/2*2) * TileHeight + 2;
-			SDL_SetRenderDrawColor(ren, CHEAT_OMNISCIENCE_RGBA_AROUND_NORMAAL_VIEWPORT);
-			SDL_RenderDrawRect(ren, &rect);
-	#endif CHEAT_OMNISCIENCE_RGBA_AROUND_NORMAAL_VIEWPORT
-
-			SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_NONE);
+			int outputWidth, outputHeight;
+			SDL_GetRendererOutputSize(ren, &outputWidth, &outputHeight);
+			SDL_LockMutex(ScreenMutex);
+			StartSelection sel = StartScreenSelection;
+			SDL_UnlockMutex(ScreenMutex);
+			DrawStartScreen(ren, outputWidth, outputHeight, sel);
 		}
+		else
+		{
+			SDL_SetRenderDrawColor(ren, 0, 0, 0, 255);
+
+			SDL_RenderClear(ren);
+
+			SDL_LockMutex(ScreenMutex);
+			for (Uint y = 0; y < WINDOW_HEIGHT; y++)
+				for (Uint x = 0; x < WINDOW_WIDTH; x++)
+					RenderCharacterAt(ren, font, x, y);
+			SDL_UnlockMutex(ScreenMutex);
+#if defined(CHEAT_OMNISCIENCE) && defined(CHEAT_OMNISCIENCE_SHOW_NORMAL_VIEWPORT)
+			{
+				SDL_Rect rect;
+
+				// darken outside area
+
+				SDL_SetRenderDrawColor(ren, CHEAT_OMNISCIENCE_RGBA_OUTSIDE_NORMAL_VIEWPORT);
+				SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_BLEND);
+
+				rect.w = WINDOW_WIDTH * TileWidth;  rect.x = 0; rect.y = VIEWPORT_ROW * TileHeight; rect.h = (VIEWPORT_HEIGHT/2 - (25 - VIEWPORT_ROW)/2) * TileHeight;
+				SDL_RenderFillRect(ren, &rect);
+
+				rect.y = (VIEWPORT_ROW + VIEWPORT_HEIGHT/2 + (25 - VIEWPORT_ROW)/2) * TileHeight;
+				SDL_RenderFillRect(ren, &rect);
+
+				rect.x = 0; rect.y = (VIEWPORT_ROW + VIEWPORT_HEIGHT/2 - (25 - VIEWPORT_ROW)/2) * TileHeight; rect.w = (WINDOW_WIDTH/2 - 40/2) * TileWidth; rect.h = ((25 - VIEWPORT_ROW)/2*2) * TileHeight;
+				SDL_RenderFillRect(ren, &rect);
+
+				rect.x = (WINDOW_WIDTH/2 + 40/2) * TileWidth;
+				SDL_RenderFillRect(ren, &rect);
+
+		#ifdef CHEAT_OMNISCIENCE_RGBA_AROUND_NORMAAL_VIEWPORT
+				// draw gray rectangle around inside area
+				rect.x = (WINDOW_WIDTH/2 - 40/2) * TileWidth - 1; rect.y = (VIEWPORT_ROW + VIEWPORT_HEIGHT/2 - (25 - VIEWPORT_ROW)/2  ) * TileHeight - 1;
+				rect.w = (                 80/2) * TileWidth + 2; rect.h = (                                   (25 - VIEWPORT_ROW)/2*2) * TileHeight + 2;
+				SDL_SetRenderDrawColor(ren, CHEAT_OMNISCIENCE_RGBA_AROUND_NORMAAL_VIEWPORT);
+				SDL_RenderDrawRect(ren, &rect);
+		#endif CHEAT_OMNISCIENCE_RGBA_AROUND_NORMAAL_VIEWPORT
+
+				SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_NONE);
+			}
 #endif
 
-		if (OutputCursorVisible && SDL_GetTicks() % 500 < 250)
-		{
-			SDL_Color c = ScreenColors[OutputTextColor];
-			SDL_SetRenderDrawColor(ren, c.r, c.g, c.b, c.a);
-			SDL_Rect rect = { (int)OutputCursorX * TileWidth, (int)OutputCursorY * TileHeight, TileWidth, TileHeight };
-			SDL_RenderFillRect(ren, &rect);
-		}
+			if (OutputCursorVisible && SDL_GetTicks() % 500 < 250)
+			{
+				SDL_Color c = ScreenColors[OutputTextColor];
+				SDL_SetRenderDrawColor(ren, c.r, c.g, c.b, c.a);
+				SDL_Rect rect = { (int)OutputCursorX * TileWidth, (int)OutputCursorY * TileHeight, TileWidth, TileHeight };
+				SDL_RenderFillRect(ren, &rect);
+			}
 
 #if 0
-		if (screenshot_filename)
-		{
-			SDL_Surface *infoSurface = SDL_GetWindowSurface(win);
-			unsigned char *pixels = new BYTE [infoSurface->w * infoSurface->h * infoSurface->format->BytesPerPixel];
-			SDL_RenderReadPixels(ren, &infoSurface->clip_rect, infoSurface->format->format, pixels, infoSurface->w * infoSurface->format->BytesPerPixel);
-			SDL_Surface *saveSurface = SDL_CreateRGBSurfaceFrom(pixels, infoSurface->w, infoSurface->h, infoSurface->format->BitsPerPixel, infoSurface->w * infoSurface->format->BytesPerPixel, infoSurface->format->Rmask, infoSurface->format->Gmask, infoSurface->format->Bmask, infoSurface->format->Amask);
-			SDL_SaveBMP(saveSurface, screenshot_filename);
-			SDL_FreeSurface(saveSurface);
-			screenshot_filename = NULL;
-		}
+			if (screenshot_filename)
+			{
+				SDL_Surface *infoSurface = SDL_GetWindowSurface(win);
+				unsigned char *pixels = new BYTE [infoSurface->w * infoSurface->h * infoSurface->format->BytesPerPixel];
+				SDL_RenderReadPixels(ren, &infoSurface->clip_rect, infoSurface->format->format, pixels, infoSurface->w * infoSurface->format->BytesPerPixel);
+				SDL_Surface *saveSurface = SDL_CreateRGBSurfaceFrom(pixels, infoSurface->w, infoSurface->h, infoSurface->format->BitsPerPixel, infoSurface->w * infoSurface->format->BytesPerPixel, infoSurface->format->Rmask, infoSurface->format->Gmask, infoSurface->format->Bmask, infoSurface->format->Amask);
+				SDL_SaveBMP(saveSurface, screenshot_filename);
+				SDL_FreeSurface(saveSurface);
+				screenshot_filename = NULL;
+			}
 #endif
+		}
+
 		SDL_RenderPresent(ren);
 
 		SleepTimeslice();
 	}
 
 	DestroyGlyphs();
+	CloseUIFonts();
 
 	SDL_DestroyRenderer(ren);
 	SDL_DestroyWindow(win);
@@ -785,6 +930,7 @@ static void SetUpAppBundlePaths()
 	if (strstr(basePath, ".app/Contents/Resources/"))
 	{
 		snprintf(BundledFontPath, sizeof(BundledFontPath), "%s%s", basePath, FONT_FILENAME);
+		snprintf(ResourceDir, sizeof(ResourceDir), "%s", basePath);
 		char *prefPath = SDL_GetPrefPath("", "Snipes");
 		if (prefPath)
 		{

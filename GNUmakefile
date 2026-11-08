@@ -1,4 +1,4 @@
-SOURCES=$(addprefix src/, $(addsuffix .cpp, Snipes skill $(addprefix sdl/, console keyboard sound timer)))
+SOURCES=$(addprefix src/, $(addsuffix .cpp, Snipes skill $(addprefix sdl/, console keyboard sound timer uifont startscreen startscreen_logic hudformat)))
 CFLAGS=-std=c++11 $(shell sdl2-config --cflags)
 # Sources use <SDL2/...> includes, so also add the parent include dir (needed for Homebrew)
 CFLAGS+=-I$(shell sdl2-config --prefix)/include

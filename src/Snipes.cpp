@@ -2196,6 +2196,7 @@ extern "C" int __cdecl SDL_main(int argc, char* argv[])
 	ClearConsole();
 	if (!playbackMode)
 	{
+#ifdef _CONSOLE
 #define _ " "
 #define S "\x01"
 #define i "\x18"
@@ -2221,6 +2222,10 @@ extern "C" int __cdecl SDL_main(int argc, char* argv[])
 #undef S
 #undef i
 		ReadSkillLevel();
+#else
+		if (!ChooseSkillLevel(skillLevelLetter, skillLevelNumber))
+			goto do_not_play_again;
+#endif
 		if (got_ctrl_break)
 			goto do_not_play_again;
 	}
@@ -2505,10 +2510,16 @@ extern "C" int __cdecl SDL_main(int argc, char* argv[])
 			if (playAgain == 'N' || playAgain == 'n')
 				goto do_not_play_again;
 		}
+#ifdef _CONSOLE
 		WriteTextToConsole("Enter new skill level (A-Z)(1-9): ");
 		ReadSkillLevel();
 		if (got_ctrl_break)
 			break;
+#else
+		ClearConsole();
+		if (!ChooseSkillLevel(skillLevelLetter, skillLevelNumber))
+			break;
+#endif
 	}
 do_not_play_again:
 
