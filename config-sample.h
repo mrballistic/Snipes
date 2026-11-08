@@ -26,6 +26,7 @@
 //#define TILE_WIDTH  27
 //#define TILE_HEIGHT 36
 //#define FONT_SIZE TILE_HEIGHT
+//#define WINDOW_SCREEN_FRACTION (2.0/3.0) // when tile size is automatically chosen, due to being undefined above, the initial window is sized to about this fraction of the usable desktop height
 #define ALLOWABLE_BORDER_EXCESS 2 // when tile size is automatically chosen, due to being undefined above, this decides how much overflow (in pixels) beyond the usable desktop area is allowed
 
 // SDL2_ttf line drawing glyph glitch workarounds

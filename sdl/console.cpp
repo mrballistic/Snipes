@@ -14,6 +14,10 @@
 #include <unistd.h>
 #endif
 
+#ifndef WINDOW_SCREEN_FRACTION
+#define WINDOW_SCREEN_FRACTION (2.0/3.0)
+#endif
+
 #define DEFAULT_TEXT_COLOR 0x7 // (FOREGROUND_BLUE | FOREGROUND_GREEN | FOREGROUND_RED)
 
 // TODO: Handle Ctrl+C / Ctrl+Break
@@ -518,7 +522,7 @@ static int SDLCALL ConsoleThreadFunc(void*)
 		}
 		TileHeight = TILE_HEIGHT;
 #else
-		TileHeight = usableRect.h / WINDOW_HEIGHT;
+		TileHeight = (int)(usableRect.h * WINDOW_SCREEN_FRACTION) / WINDOW_HEIGHT;
 #endif
 
 #ifndef TILE_WIDTH
