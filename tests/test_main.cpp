@@ -6,6 +6,7 @@
 #include "../src/skill.h"
 #include "../src/sdl/hudformat.h"
 #include "../src/sdl/startscreen_logic.h"
+#include "../src/sdl/layout.h"
 
 static int failures = 0, checks = 0;
 
@@ -97,12 +98,30 @@ static void TestSavedLevel()
 	s = Sel('A', 1); CHECK(ParseSavedLevel(out, s)); CHECK(SelIs(s, 'W', 9));
 }
 
+static bool TilesAre(int outputW, int outputH, int startW, int startH, int expectW, int expectH)
+{
+	int w = startW, h = startH;
+	FitTilesToOutput(outputW, outputH, 40, 22, w, h);
+	return w == expectW && h == expectH;
+}
+
+static void TestFitTilesToOutput()
+{
+	// 40 columns of 30px = 1200 wide; a 1.5-row bar (60px) + 22 rows of 40px = 940 tall
+	CHECK(TilesAre(1200,  940, 30, 40, 30, 40)); // already fits: unchanged
+	CHECK(TilesAre( 600,  470, 30, 40, 15, 20)); // moved to a 1x display: half the pixels
+	CHECK(TilesAre(2400, 1880, 30, 40, 60, 80)); // moved to a Retina display: twice the pixels
+	CHECK(TilesAre(1200, 1410, 30, 40, 45, 60)); // window dragged taller
+	CHECK(TilesAre(1800,  940, 30, 40, 45, 60)); // window dragged wider
+}
+
 int main()
 {
 	TestDescribeSkillLevel();
 	TestFormatGameTime();
 	TestStartScreenKey();
 	TestSavedLevel();
+	TestFitTilesToOutput();
 	printf("%d checks, %d failures\n", checks, failures);
 	return failures ? 1 : 0;
 }

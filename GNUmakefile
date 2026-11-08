@@ -1,4 +1,4 @@
-SOURCES=$(addprefix src/, $(addsuffix .cpp, Snipes skill $(addprefix sdl/, console keyboard sound timer uifont startscreen startscreen_logic hudformat hud)))
+SOURCES=$(addprefix src/, $(addsuffix .cpp, Snipes skill $(addprefix sdl/, console keyboard sound timer uifont startscreen startscreen_logic hudformat hud layout)))
 CFLAGS=-std=c++11 $(shell sdl2-config --cflags)
 # Sources use <SDL2/...> includes, so also add the parent include dir (needed for Homebrew)
 CFLAGS+=-I$(shell sdl2-config --prefix)/include
@@ -19,7 +19,7 @@ src/config.h :
 clean :
 	rm -f snipes snipes-tests
 
-TEST_SOURCES=tests/test_main.cpp src/skill.cpp src/sdl/hudformat.cpp src/sdl/startscreen_logic.cpp
+TEST_SOURCES=tests/test_main.cpp src/skill.cpp src/sdl/hudformat.cpp src/sdl/startscreen_logic.cpp src/sdl/layout.cpp
 
 snipes-tests : $(TEST_SOURCES) $(wildcard src/*.h src/sdl/*.h) GNUmakefile
 	$(CXX) -std=c++11 -Wall -Wextra -o $@ $(TEST_SOURCES)

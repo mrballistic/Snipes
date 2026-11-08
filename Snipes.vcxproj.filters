@@ -30,6 +30,9 @@
     <ClCompile Include="src\sdl\hudformat.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\sdl\layout.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="src\sdl\startscreen.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -90,6 +93,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\sdl\hudformat.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\sdl\layout.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\sdl\startscreen.h">

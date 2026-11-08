@@ -13,6 +13,7 @@
 #include "uifont.h"
 #include "startscreen.h"
 #include "hud.h"
+#include "layout.h"
 #if defined(__APPLE__)
 #include <unistd.h>
 #endif
@@ -769,44 +770,43 @@ static int SDLCALL ConsoleThreadFunc(void*)
 					Paused = false;
 					break;
 				case SDL_WINDOWEVENT_RESIZED:
+				case SDL_WINDOWEVENT_SIZE_CHANGED:
+				case SDL_WINDOWEVENT_DISPLAY_CHANGED:
 					{
-						int newWidth  = (int)(e.window.data1 * PixelScale + 0.5); // in pixels
-						int newHeight = (int)(e.window.data2 * PixelScale + 0.5);
+						// Work in renderer pixels, and re-derive the pixel scale: moving the window
+						// between a Retina and a non-Retina display changes it without resizing.
+						int outputWidth, outputHeight, windowWidth;
+						SDL_GetRendererOutputSize(ren, &outputWidth, &outputHeight);
+						SDL_GetWindowSize(win, &windowWidth, NULL);
+						double newScale = windowWidth > 0 ? (double)outputWidth / windowWidth : 1;
+						bool scaleChanged = newScale != PixelScale;
+						PixelScale = newScale;
+
+						int newTileWidth = TileWidth, newTileHeight = TileHeight;
+						FitTilesToOutput(outputWidth, outputHeight, WINDOW_WIDTH, WINDOW_HEIGHT - VIEWPORT_ROW, newTileWidth, newTileHeight);
+						if (newTileWidth != TileWidth || newTileHeight != TileHeight || scaleChanged)
 						{
-							double  widthRatio = (double)newWidth  / (WINDOW_WIDTH  * TileWidth);
-							double heightRatio = (double)newHeight / WindowContentHeight();
-							if ( widthRatio < 1)  widthRatio = 1. /  widthRatio;
-							if (heightRatio < 1) heightRatio = 1. / heightRatio;
-							
-							if (heightRatio > widthRatio)
+							TileWidth  = newTileWidth;
+							TileHeight = newTileHeight;
+							FontSize = TileHeight;
+							DestroyGlyphs();
+							ClearGlyphs();
+
+							TTF_Font* newFont = OpenGameFont(FontSize);
+							if (!newFont)
 							{
-								TileHeight = (int)(newHeight / WINDOW_HEIGHT_IN_ROWS + 0.5);
-								TileWidth = ((TileHeight*3+2)/4);
+								instant_quit = forfeit_match = got_ctrl_break = true;
 							}
 							else
 							{
-								TileWidth = (newWidth + WINDOW_WIDTH/2) / WINDOW_WIDTH;
-								TileHeight = ((TileWidth*8+3)/6);
+								TTF_CloseFont(font);
+								font = newFont;
 							}
+							CloseUIFonts(); // their sizes follow the window
 						}
-
-						FontSize = TileHeight;
-						DestroyGlyphs();
-						ClearGlyphs();
-
-						TTF_Font* newFont = OpenGameFont(FontSize);
-						if (!newFont)
-						{
-							instant_quit = forfeit_match = got_ctrl_break = true;
-						}
-						else
-						{
-							TTF_CloseFont(font);
-							font = newFont;
-						}
-
-						CloseUIFonts(); // their sizes follow the window
-						SDL_SetWindowSize(win, ToPoints(WINDOW_WIDTH * TileWidth), ToPoints(WindowContentHeight()));
+						// Snap the window to a whole number of tiles; this re-enters here once, as a no-op
+						if (outputWidth != WINDOW_WIDTH * TileWidth || outputHeight != WindowContentHeight())
+							SDL_SetWindowSize(win, ToPoints(WINDOW_WIDTH * TileWidth), ToPoints(WindowContentHeight()));
 					}
 					break;
 				}
