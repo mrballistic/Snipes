@@ -35,7 +35,7 @@
       "lighting" : "combined",
       "shadow" : {
         "kind" : "layer-color",
-        "opacity" : 1.27
+        "opacity" : 0.4
       },
       "specular" : true,
       "translucency" : {

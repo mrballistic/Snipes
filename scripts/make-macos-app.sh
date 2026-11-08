@@ -41,18 +41,20 @@ else
 	echo "warning: SnipesConsole.ttf not found; the app will use a fallback font" >&2
 fi
 
-# App icon: macos/AppIcon.icon (Icon Composer), macos/AppIcon.xcassets (Xcode asset
-# catalog containing an AppIcon set), or a ready-made macos/AppIcon.icns.
+# App icon: Icon.icon (Icon Composer) in the repo root, or macos/AppIcon.xcassets
+# (Xcode asset catalog containing an AppIcon set), or a ready-made macos/AppIcon.icns.
 MIN_MACOS=$(sw_vers -productVersion | cut -d. -f1).0
 ICON_KEYS=
 ICON_SRC=
-for c in macos/AppIcon.icon macos/AppIcon.xcassets; do [[ -e "$c" ]] && { ICON_SRC=$c; break; }; done
+for c in Icon.icon macos/AppIcon.xcassets; do [[ -e "$c" ]] && { ICON_SRC=$c; break; }; done
 if [[ -n "$ICON_SRC" ]]; then
-	xcrun actool "$ICON_SRC" --compile "$APP/Contents/Resources" --app-icon AppIcon \
+	# actool names the icon after the .icon file, or after the asset catalog's icon set
+	ICON_NAME=$([[ "$ICON_SRC" == *.icon ]] && basename "$ICON_SRC" .icon || echo AppIcon)
+	xcrun actool "$ICON_SRC" --compile "$APP/Contents/Resources" --app-icon "$ICON_NAME" \
 		--platform macosx --minimum-deployment-target "$MIN_MACOS" \
 		--output-partial-info-plist "$DIST/icon-partial.plist" >/dev/null
 	rm -f "$DIST/icon-partial.plist"
-	ICON_KEYS="<key>CFBundleIconFile</key><string>AppIcon</string><key>CFBundleIconName</key><string>AppIcon</string>"
+	ICON_KEYS="<key>CFBundleIconFile</key><string>$ICON_NAME</string><key>CFBundleIconName</key><string>$ICON_NAME</string>"
 elif [[ -f macos/AppIcon.icns ]]; then
 	cp macos/AppIcon.icns "$APP/Contents/Resources/"
 	ICON_KEYS="<key>CFBundleIconFile</key><string>AppIcon</string>"
