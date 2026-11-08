@@ -1,0 +1,53 @@
+{
+  "fill" : {
+    "automatic-gradient" : "display-p3:0.06275,0.33333,0.60392,1.00000"
+  },
+  "groups" : [
+    {
+      "layers" : [
+
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.3
+      }
+    },
+    {
+      "blend-mode" : "normal",
+      "blur-material" : 0.5,
+      "layers" : [
+        {
+          "image-name" : "icon-vector-01.svg",
+          "name" : "icon-vector-01",
+          "position" : {
+            "scale" : 7.23,
+            "translation-in-points" : [
+              21.581550000000107,
+              8.965200000000095
+            ]
+          }
+        }
+      ],
+      "lighting" : "combined",
+      "shadow" : {
+        "kind" : "layer-color",
+        "opacity" : 1.27
+      },
+      "specular" : true,
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.44
+      }
+    }
+  ],
+  "supported-platforms" : {
+    "circles" : [
+      "watchOS"
+    ],
+    "squares" : "shared"
+  }
+}
