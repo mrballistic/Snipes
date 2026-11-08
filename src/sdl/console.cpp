@@ -620,8 +620,14 @@ static void HandleStartScreenKey(const SDL_KeyboardEvent &e)
 			return;
 		break;
 	}
+	StartModifier mod = StartModifier_None;
+	if (e.keysym.mod & KMOD_CTRL)
+		mod = StartModifier_Control;
+	else
+	if (e.keysym.mod & (KMOD_GUI | KMOD_ALT))
+		mod = StartModifier_Command;
 	SDL_LockMutex(ScreenMutex);
-	StartAction action = StartScreenKey(StartScreenSelection, key, chr);
+	StartAction action = StartScreenKey(StartScreenSelection, key, chr, mod);
 	SDL_UnlockMutex(ScreenMutex);
 	if (action != StartAction_None)
 		SDL_AtomicSet(&StartScreenResult, action);

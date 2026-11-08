@@ -77,6 +77,12 @@ static void TestStartScreenKey()
 	s = Sel('A', 1); StartScreenKey(s, StartKey_Char, '#'); CHECK(SelIs(s, 'A', 1));
 	s = Sel('B', 3); CHECK(StartScreenKey(s, StartKey_Return) == StartAction_Start); CHECK(SelIs(s, 'B', 3));
 	s = Sel('B', 3); CHECK(StartScreenKey(s, StartKey_Escape) == StartAction_Quit);
+	// Shortcuts such as Cmd+H or Cmd+M must not change the selection; Ctrl+C quits, as at the old prompt
+	s = Sel('B', 3); CHECK(StartScreenKey(s, StartKey_Char, 'h', StartModifier_Command) == StartAction_None); CHECK(SelIs(s, 'B', 3));
+	s = Sel('B', 3); CHECK(StartScreenKey(s, StartKey_Char, '7', StartModifier_Command) == StartAction_None); CHECK(SelIs(s, 'B', 3));
+	s = Sel('B', 3); CHECK(StartScreenKey(s, StartKey_Right, 0, StartModifier_Command) == StartAction_None); CHECK(SelIs(s, 'B', 3));
+	s = Sel('B', 3); CHECK(StartScreenKey(s, StartKey_Char, 'c', StartModifier_Control) == StartAction_Quit); CHECK(SelIs(s, 'B', 3));
+	s = Sel('B', 3); CHECK(StartScreenKey(s, StartKey_Char, 'x', StartModifier_Control) == StartAction_None); CHECK(SelIs(s, 'B', 3));
 }
 
 static void TestSavedLevel()

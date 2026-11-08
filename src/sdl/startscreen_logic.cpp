@@ -3,8 +3,10 @@
 
 static const Uint LastLetter = 'Z'-'A';
 
-StartAction StartScreenKey(StartSelection &sel, StartKey key, char chr)
+StartAction StartScreenKey(StartSelection &sel, StartKey key, char chr, StartModifier mod)
 {
+	if (mod != StartModifier_None)
+		return mod == StartModifier_Control && key == StartKey_Char && (chr == 'c' || chr == 'C') ? StartAction_Quit : StartAction_None;
 	switch (key)
 	{
 	case StartKey_Left  : if (sel.letter > 0         ) sel.letter--; break;
