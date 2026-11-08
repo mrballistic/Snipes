@@ -67,7 +67,7 @@ To refresh `docs/screenshots/`, build the app, then run `scripts/capture-screens
 
 ## Tests
 
-`make test` builds and runs the unit tests: level descriptions, start-screen keys, the saved level, and time formatting.
+`make test` builds and runs the unit tests (level descriptions, start-screen keys, the saved level, window fitting and time formatting), then checks that every source file with non-ASCII text starts with a UTF-8 byte order mark, which Visual Studio needs to read it correctly.
 
 ## What this fork changes under the hood
 
