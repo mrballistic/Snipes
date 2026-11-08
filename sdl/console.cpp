@@ -10,6 +10,9 @@
 #include "../platform.h"
 #include "../timer.h"
 #include "sdl.h"
+#if defined(__APPLE__)
+#include <unistd.h>
+#endif
 
 #define DEFAULT_TEXT_COLOR 0x7 // (FOREGROUND_BLUE | FOREGROUND_GREEN | FOREGROUND_RED)
 
@@ -452,11 +455,12 @@ static void DestroyGlyphs()
 // can be opened. The fallbacks cover all 256 glyphs of code page 437, but may
 // not look like the original. Once a font has been chosen, it is reused for
 // subsequent calls (e.g. when the window is resized), and hinting is applied.
+static char BundledFontPath[1024]; // set by main() when running from a macOS .app bundle
 static TTF_Font* OpenGameFont(int size)
 {
 	static const char* const fontFilenames[] =
 	{
-		FONT_FILENAME,
+		BundledFontPath[0] ? BundledFontPath : FONT_FILENAME,
 		"/System/Library/Fonts/Menlo.ttc",                        // macOS
 		"/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",    // Debian, Ubuntu
 		"/usr/share/fonts/TTF/DejaVuSansMono.ttf",                // Arch
@@ -765,6 +769,29 @@ void CloseConsole()
 	Exiting = true; // main() tears down SDL once the game thread has finished
 }
 
+// When launched from a .app bundle, the working directory is "/", which is
+// read-only and doesn't contain the font. Load the font from the bundle's
+// Resources directory instead, and write replays to the user's
+// Application Support directory.
+static void SetUpAppBundlePaths()
+{
+	char *basePath = SDL_GetBasePath();
+	if (!basePath)
+		return;
+	if (strstr(basePath, ".app/Contents/Resources/"))
+	{
+		snprintf(BundledFontPath, sizeof(BundledFontPath), "%s%s", basePath, FONT_FILENAME);
+		char *prefPath = SDL_GetPrefPath("", "Snipes");
+		if (prefPath)
+		{
+			if (chdir(prefPath) != 0)
+				fprintf(stderr, "Could not change to directory %s; replays will not be saved\n", prefPath);
+			SDL_free(prefPath);
+		}
+	}
+	SDL_free(basePath);
+}
+
 int main(int argc, char* argv[])
 {
 	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) != 0)
@@ -772,6 +799,7 @@ int main(int argc, char* argv[])
 		fprintf(stderr, "SDL_Init: %s\n", SDL_GetError());
 		return 1;
 	}
+	SetUpAppBundlePaths();
 	ScreenMutex = SDL_CreateMutex();
 
 	GameArgc = argc;

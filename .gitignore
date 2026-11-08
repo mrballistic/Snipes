@@ -14,3 +14,7 @@
 # GNUmakefile
 /snipes
 /snipes.exe
+
+# macOS app bundle
+/dist
+.DS_Store

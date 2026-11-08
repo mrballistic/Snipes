@@ -25,6 +25,12 @@ On startup, the SDL build will attempt to load a custom font, which can be obtai
 
 For Arch Linux, you can use the [snipes-git](https://aur.archlinux.org/packages/snipes-git/) AUR package.
 
+#### macOS app bundle
+
+With Homebrew's `sdl2`, `sdl3` and `sdl2_ttf` installed, run `scripts/make-macos-app.sh` to build a self-contained, code-signed `dist/Snipes.app` (plus a zip of it). Put `SnipesConsole.ttf` in the repository root to bundle it, and optionally an app icon in `macos/` (`AppIcon.icon`, `AppIcon.xcassets` or `AppIcon.icns`). Set `NOTARY_PROFILE` to a `notarytool` keychain profile to also notarize and staple it. See the script header for details.
+
+When run from the app bundle, replays are saved to `~/Library/Application Support/Snipes`.
+
 ### Replay recording
 
 This version automatically records replay files of played games. By default, replay files are saved to the current directory, and have a `.SnipesGame` file extension.
