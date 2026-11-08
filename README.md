@@ -4,6 +4,23 @@ This is a modern port of the classic 1982 text-mode game Snipes. The code has be
 
 For more information, see the [vogons.org forum thread](https://www.vogons.org/viewtopic.php?f=7&t=49073).
 
+This is a fork of [Davidebyzero/Snipes](https://github.com/Davidebyzero/Snipes) that adds a native macOS app. It also:
+
+- runs the window and event loop on the main thread, which macOS requires
+- falls back to a system font if `SnipesConsole.ttf` is missing
+- opens the window at two-thirds of the screen height instead of full height
+
+### Download for macOS
+
+**[Download the latest release](https://github.com/mrballistic/Snipes/releases/latest)**, unzip it, and drag `Snipes.app` to your Applications folder.
+
+- It's signed with a Developer ID and notarized by Apple, so it opens without a Gatekeeper warning.
+- It's self-contained: SDL and the original font are bundled, so you don't need Homebrew.
+- It requires an Apple Silicon Mac.
+- Replays are saved to `~/Library/Application Support/Snipes`.
+
+To build it yourself, see [macOS app bundle](#macos-app-bundle) below.
+
 ### Building
 
 #### Dependencies
@@ -27,13 +44,24 @@ For Arch Linux, you can use the [snipes-git](https://aur.archlinux.org/packages/
 
 #### macOS app bundle
 
-With Homebrew's `sdl2`, `sdl3` and `sdl2_ttf` installed, run `scripts/make-macos-app.sh` to build a self-contained, code-signed `dist/Snipes.app` (plus a zip of it). Put `SnipesConsole.ttf` in the repository root to bundle it, and optionally an app icon (`Icon.icon` from Icon Composer in the repository root, or `macos/AppIcon.xcassets` or `macos/AppIcon.icns`). Set `NOTARY_PROFILE` to a `notarytool` keychain profile to also notarize and staple it. See the script header for details.
+This is how the release build is made.
 
-When run from the app bundle, replays are saved to `~/Library/Application Support/Snipes`.
+1. Install the dependencies: `brew install sdl2 sdl3 sdl2_ttf`
+2. Put `SnipesConsole.ttf` in the repository root to bundle it. The app icon is `Icon.icon`, an Icon Composer file, also in the root.
+3. Run `scripts/make-macos-app.sh`. It builds the game, bundles the libraries, signs everything with your first "Developer ID Application" identity, and writes `dist/Snipes.app` plus a zip of it.
+
+To notarize as well, store your Apple credentials once, then pass the profile name:
+
+```
+xcrun notarytool store-credentials snipes-notary --apple-id <apple-id> --team-id <team-id>
+NOTARY_PROFILE=snipes-notary scripts/make-macos-app.sh
+```
+
+The script header lists its other options, such as `SIGN_IDENTITY` and `BUNDLE_ID`.
 
 ### Replay recording
 
-This version automatically records replay files of played games. By default, replay files are saved to the current directory, and have a `.SnipesGame` file extension.
+This version automatically records replay files of played games. Replay files have a `.SnipesGame` file extension. They're saved to the current directory, or to `~/Library/Application Support/Snipes` when you run the macOS app.
 
 To play back a replay file, pass it as the first argument to the game program, e.g.:
 
