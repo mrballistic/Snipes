@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "../skill.h"
+#include "../sdl/hudformat.h"
 
 static int failures = 0, checks = 0;
 
@@ -37,9 +38,26 @@ static void TestDescribeSkillLevel()
 	CHECK(DescribeSkillLevel(L('A'), 1).aim == 2);
 }
 
+static bool TimeIs(WORD frame, const char *expected)
+{
+	char out[8];
+	FormatGameTime(frame, out);
+	return strcmp(out, expected) == 0;
+}
+
+static void TestFormatGameTime()
+{
+	CHECK(TimeIs(0, "0:00"));
+	CHECK(TimeIs(18, "0:00"));
+	CHECK(TimeIs(19, "0:01"));
+	CHECK(TimeIs(1093, "1:00"));
+	CHECK(TimeIs(65535, "59:59")); // frame is a WORD, so this is the largest time shown
+}
+
 int main()
 {
 	TestDescribeSkillLevel();
+	TestFormatGameTime();
 	printf("%d checks, %d failures\n", checks, failures);
 	return failures ? 1 : 0;
 }

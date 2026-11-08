@@ -19,7 +19,7 @@ config.h :
 clean :
 	rm -f snipes snipes-tests
 
-TEST_SOURCES=tests/test_main.cpp skill.cpp
+TEST_SOURCES=tests/test_main.cpp skill.cpp sdl/hudformat.cpp
 
 snipes-tests : $(TEST_SOURCES) $(wildcard *.h sdl/*.h) GNUmakefile
 	$(CXX) -std=c++11 -Wall -Wextra -o $@ $(TEST_SOURCES)
