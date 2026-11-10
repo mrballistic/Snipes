@@ -1,0 +1,98 @@
+# Builds an unsigned universal (Apple Silicon + Intel) Snipes.app on macOS 15
+# runners, so it runs on macOS 15 and later. Signing and notarization happen
+# locally: see "The macOS app bundle" in BUILDING.md.
+name: macOS universal build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+    paths-ignore: ['**.md', 'docs/**']
+
+permissions:
+  contents: read
+
+env:
+  MACOSX_DEPLOYMENT_TARGET: '15.0'
+  # SnipesConsole.ttf isn't in the repo; fetch it and check it's the exact font we ship
+  FONT_URL: http://kingbird.myphotos.cc/ee22d44076adb8a34d8e20df4be3730a/SnipesConsole.ttf
+  FONT_SHA256: 47019167d6193cb286c40c7fe07940b1fea4e19794a0be35d90b6889027ec81a
+
+jobs:
+  build:
+    name: Build (${{ matrix.arch }})
+    strategy:
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+          - runner: macos-15-intel
+            arch: x86_64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # the version number counts commits
+
+      - name: Use Xcode 26 (needed to compile the Icon Composer app icon)
+        run: |
+          xcodes=(/Applications/Xcode_26*.app)
+          sudo xcode-select -s "$(printf '%s\n' "${xcodes[@]}" | sort -V | tail -1)"
+          xcodebuild -version
+
+      - name: Install SDL
+        run: brew install sdl2 sdl3 sdl2_ttf
+
+      - name: Fetch SnipesConsole.ttf
+        run: |
+          curl -fsSL --retry 3 -o SnipesConsole.ttf "$FONT_URL"
+          echo "$FONT_SHA256  SnipesConsole.ttf" | shasum -a 256 -c -
+
+      - name: Unit tests
+        run: make test
+
+      - name: Build the app
+        run: scripts/make-macos-app.sh --no-sign
+
+      - name: Check architecture
+        run: test "$(lipo -archs dist/Snipes.app/Contents/MacOS/Snipes)" = "${{ matrix.arch }}"
+
+      - name: Zip
+        run: ditto -c -k --keepParent dist/Snipes.app "dist/Snipes-${{ matrix.arch }}.zip"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Snipes-${{ matrix.arch }}
+          path: dist/Snipes-${{ matrix.arch }}.zip
+          retention-days: 7
+
+  universal:
+    name: Merge into a universal app
+    needs: build
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v8
+        with:
+          path: in
+          pattern: Snipes-*
+
+      - name: Unzip
+        run: |
+          for arch in arm64 x86_64; do
+            mkdir -p "in/$arch"
+            ditto -x -k "in/Snipes-$arch/Snipes-$arch.zip" "in/$arch"
+          done
+
+      - name: Merge
+        run: scripts/merge-universal.sh in/arm64/Snipes.app in/x86_64/Snipes.app dist/Snipes.app
+
+      - name: Zip
+        run: ditto -c -k --keepParent dist/Snipes.app dist/Snipes-universal-unsigned.zip
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Snipes-universal-unsigned
+          path: dist/Snipes-universal-unsigned.zip
+          retention-days: 30
