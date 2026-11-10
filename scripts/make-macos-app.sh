@@ -45,6 +45,32 @@ max_minos() {
 	for f in "$@"; do otool -arch all -l "$f" | awk '/LC_BUILD_VERSION/{b=1} b&&/minos/{print $2; b=0}'; done | sort -V | tail -1
 }
 
+# Compiles the app icon into $APP and adds it to Info.plist: art/Icon.icon
+# (Icon Composer), macos/AppIcon.xcassets (an asset catalog with an AppIcon
+# set), or a ready-made macos/AppIcon.icns. Xcode 26's asset compiler only runs
+# on macOS 26 or later, so CI builds skip this (SKIP_ICON=1) and --app adds the
+# icon when signing.
+add_icon() {
+	local plist=$APP/Contents/Info.plist src= name min
+	for c in art/Icon.icon macos/AppIcon.xcassets; do [[ -e "$c" ]] && { src=$c; break; }; done
+	if [[ -n "$src" ]]; then
+		# actool names the icon after the .icon file, or after the asset catalog's icon set
+		name=$([[ "$src" == *.icon ]] && basename "$src" .icon || echo AppIcon)
+		min=$(plutil -extract LSMinimumSystemVersion raw "$plist")
+		xcrun actool "$src" --compile "$APP/Contents/Resources" --app-icon "$name" \
+			--platform macosx --minimum-deployment-target "$min" \
+			--output-partial-info-plist "$DIST/icon-partial.plist" >/dev/null
+		rm -f "$DIST/icon-partial.plist"
+		plutil -replace CFBundleIconFile -string "$name" "$plist"
+		plutil -replace CFBundleIconName -string "$name" "$plist"
+	elif [[ -f macos/AppIcon.icns ]]; then
+		cp macos/AppIcon.icns "$APP/Contents/Resources/"
+		plutil -replace CFBundleIconFile -string AppIcon "$plist"
+	else
+		echo "note: no app icon found; the app will use the generic icon"
+	fi
+}
+
 if [[ $SIGN == 1 && -z "${SIGN_IDENTITY:-}" ]]; then
 	SIGN_IDENTITY=$(security find-identity -v -p codesigning | sed -n 's/.*"\(Developer ID Application:[^"]*\)".*/\1/p' | head -1)
 	[[ -n "$SIGN_IDENTITY" ]] || { echo "No Developer ID Application identity found; set SIGN_IDENTITY" >&2; exit 1; }
@@ -58,6 +84,7 @@ if [[ -n "$SOURCE_APP" ]]; then
 	ditto "$SOURCE_APP" "$APP"
 	VERSION=$(plutil -extract CFBundleShortVersionString raw "$APP/Contents/Info.plist")
 	FW=$APP/Contents/Frameworks
+	plutil -extract CFBundleIconFile raw "$APP/Contents/Info.plist" >/dev/null 2>&1 || { echo "==> Adding the app icon"; add_icon; }
 else
 	VERSION=${VERSION:-1.0.$(git rev-list --count HEAD)}
 	echo "==> Building"
@@ -135,26 +162,6 @@ else
 	MIN_MACOS=$(max_minos "$APP/Contents/MacOS/Snipes" "$FW"/*.dylib)
 	echo "==> Minimum macOS: $MIN_MACOS"
 
-	# App icon: art/Icon.icon (Icon Composer), or macos/AppIcon.xcassets
-	# (Xcode asset catalog containing an AppIcon set), or a ready-made macos/AppIcon.icns.
-	ICON_KEYS=
-	ICON_SRC=
-	for c in art/Icon.icon macos/AppIcon.xcassets; do [[ -e "$c" ]] && { ICON_SRC=$c; break; }; done
-	if [[ -n "$ICON_SRC" ]]; then
-		# actool names the icon after the .icon file, or after the asset catalog's icon set
-		ICON_NAME=$([[ "$ICON_SRC" == *.icon ]] && basename "$ICON_SRC" .icon || echo AppIcon)
-		xcrun actool "$ICON_SRC" --compile "$APP/Contents/Resources" --app-icon "$ICON_NAME" \
-			--platform macosx --minimum-deployment-target "$MIN_MACOS" \
-			--output-partial-info-plist "$DIST/icon-partial.plist" >/dev/null
-		rm -f "$DIST/icon-partial.plist"
-		ICON_KEYS="<key>CFBundleIconFile</key><string>$ICON_NAME</string><key>CFBundleIconName</key><string>$ICON_NAME</string>"
-	elif [[ -f macos/AppIcon.icns ]]; then
-		cp macos/AppIcon.icns "$APP/Contents/Resources/"
-		ICON_KEYS="<key>CFBundleIconFile</key><string>AppIcon</string>"
-	else
-		echo "note: no icon in macos/; the app will use the generic icon"
-	fi
-
 	cat > "$APP/Contents/Info.plist" <<-EOF
 	<?xml version="1.0" encoding="UTF-8"?>
 	<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -172,10 +179,14 @@ else
 		<key>LSMinimumSystemVersion</key><string>$MIN_MACOS</string>
 		<key>NSHighResolutionCapable</key><true/>
 		<key>NSPrincipalClass</key><string>NSApplication</string>
-		$ICON_KEYS
 	</dict>
 	</plist>
 	EOF
+	if [[ "${SKIP_ICON:-}" == 1 ]]; then
+		echo "note: SKIP_ICON=1; the icon is added when the app is signed with --app"
+	else
+		add_icon
+	fi
 
 
 fi

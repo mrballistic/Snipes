@@ -14,6 +14,8 @@ permissions:
 
 env:
   MACOSX_DEPLOYMENT_TARGET: '15.0'
+  # Xcode 26's asset compiler needs macOS 26, so the icon is added when signing locally
+  SKIP_ICON: '1'
   # SnipesConsole.ttf isn't in the repo; fetch it and check it's the exact font we ship
   FONT_URL: http://kingbird.myphotos.cc/ee22d44076adb8a34d8e20df4be3730a/SnipesConsole.ttf
   FONT_SHA256: 47019167d6193cb286c40c7fe07940b1fea4e19794a0be35d90b6889027ec81a
@@ -33,12 +35,6 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # the version number counts commits
-
-      - name: Use Xcode 26 (needed to compile the Icon Composer app icon)
-        run: |
-          xcodes=(/Applications/Xcode_26*.app)
-          sudo xcode-select -s "$(printf '%s\n' "${xcodes[@]}" | sort -V | tail -1)"
-          xcodebuild -version
 
       - name: Install SDL
         run: brew install sdl2 sdl3 sdl2_ttf

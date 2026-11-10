@@ -43,23 +43,35 @@ For Arch Linux, you can use the [snipes-git](https://aur.archlinux.org/packages/
 
 ## The macOS app bundle
 
-This is how the release build is made.
+Releases are universal apps (Apple Silicon and Intel) that run on macOS 15 and later. GitHub builds them; you sign and notarize them on your Mac.
 
-1. Install the dependencies above, and put `SnipesConsole.ttf` in the repository root so it gets bundled.
-2. Run `scripts/make-macos-app.sh`. It builds the game, copies the Homebrew libraries, fonts and icon into the app, signs everything with your first “Developer ID Application” identity, and writes `dist/Snipes.app` plus a zip of it.
+### 1. Build on GitHub
 
-With `create-dmg` installed (`brew install create-dmg`), it also writes a disk image: the app on the left, an Applications shortcut on the right, and a background with an arrow between them, drawn by `scripts/dmg-background.swift`. The disk image is signed, and notarized along with the app.
+Every push to `master` runs the **macOS universal build** workflow (`.github/workflows/macos-universal.yml`); you can also start it by hand from the Actions tab. It builds the app on Apple Silicon and Intel macOS 15 runners, using Homebrew’s macOS 15 libraries, merges the two with `scripts/merge-universal.sh`, and uploads an unsigned `Snipes-universal-unsigned` artifact.
 
-To notarize as well, store your Apple credentials once, then pass the profile name:
+### 2. Sign, notarize and package locally
+
+Store your Apple notarization credentials once:
 
 ```
 xcrun notarytool store-credentials snipes-notary --apple-id <apple-id> --team-id <team-id>
-NOTARY_PROFILE=snipes-notary scripts/make-macos-app.sh
 ```
 
-The script header lists its other options, such as `SIGN_IDENTITY` and `BUNDLE_ID`.
+Then download the latest artifact and package it:
 
-The app is Apple Silicon only, because it bundles Homebrew’s arm64 libraries.
+```
+rm -rf dist/ci && gh run download --repo mrballistic/Snipes --name Snipes-universal-unsigned --dir dist/ci
+ditto -x -k dist/ci/Snipes-universal-unsigned.zip dist/ci
+NOTARY_PROFILE=snipes-notary scripts/make-macos-app.sh --app dist/ci/Snipes.app
+```
+
+That signs everything with your first “Developer ID Application” identity, notarizes and staples it, and writes `dist/Snipes-<version>-macos-universal.zip`. With `create-dmg` installed (`brew install create-dmg`), it also writes a matching `.dmg`: the app on the left, an Applications shortcut on the right, and a background with an arrow between them, drawn by `scripts/dmg-background.swift`. The disk image is signed and notarized too.
+
+### Building just for your own Mac
+
+`scripts/make-macos-app.sh` with no arguments builds, signs and packages an app for your Mac’s architecture only, from your local Homebrew libraries. Put `SnipesConsole.ttf` in the repository root first so it gets bundled. The app’s minimum macOS comes from what its bundled libraries need, which for a local Homebrew is your current macOS, so use the GitHub build for anything you share. `--no-sign` stops after building, which is what CI uses.
+
+The script header lists its other options, such as `SIGN_IDENTITY` and `BUNDLE_ID`.
 
 ## Screenshots
 
