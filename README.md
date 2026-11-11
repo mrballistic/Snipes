@@ -24,7 +24,7 @@ The game logic is unchanged, so replays recorded with the original port still pl
 
 - It's signed with a Developer ID and notarized by Apple, so it opens without a Gatekeeper warning.
 - It's self-contained: SDL and the original font are bundled, so you don't need Homebrew.
-- It requires an Apple Silicon Mac.
+- It runs on Apple Silicon and Intel Macs with macOS 15 or later.
 - Replays are saved to `~/Library/Application Support/Snipes`.
 
 To build it yourself, on macOS, Linux or Windows, see [BUILDING.md](BUILDING.md).

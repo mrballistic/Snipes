@@ -67,7 +67,6 @@ func drawCentered(_ text: String, _ f: NSFont, _ c: NSColor, finderY: CGFloat, t
     s.draw(at: NSPoint(x: (x(width) - size.width) / 2, y: y(finderY) - size.height / 2))
 }
 drawCentered("Drag Snipes into Applications to install it", font("IBMPlexMono", 14), color(0x1d2740), finderY: 318)
-drawCentered("SIGNED AND NOTARIZED · APPLE SILICON", font("IBMPlexMono", 10), color(0x5b6680), finderY: 348, tracking: 1.5)
 
 NSGraphicsContext.restoreGraphicsState()
 guard let png = rep.representation(using: .png, properties: [:]) else { exit(1) }

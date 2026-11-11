@@ -65,7 +65,8 @@ jobs:
   universal:
     name: Merge into a universal app
     needs: build
-    runs-on: macos-15
+    # lipo doesn't care which architecture it runs on, and Apple Silicon runners queue longer
+    runs-on: macos-15-intel
     steps:
       - uses: actions/checkout@v7
 
